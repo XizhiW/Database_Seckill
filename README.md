@@ -20,10 +20,10 @@ JMeter
 
 ## 秒杀优化方向 Optimizations
 
-1. 将请求尽量拦截在系统上游：传统秒杀系统之所以挂，请求都压倒了后端数据层，数据读写锁冲突严重，几乎所有请求都超时，流量虽大，下单成功的有效流量甚小，我们可以通过限流、降级等措施来最大化减少对数据库的访问，从而保护系统。
-1. Hold the request at upstream system: if we let our requests flow into backend databse, it will cause a serious read-write conflict, and most request will time-out. However, users who successfully get the promotion deals only take up very little portion of the entire users, instead of letting them all making request to backend database, we can put all this work to front end and letting those few users access backend to protect our system from overflow.
-2. 充分利用缓存：秒杀商品是一个典型的读多写少的应用场景，充分利用缓存将大大提高并发量
-2. Make full use of cache: Online promotion sale make up of mainly reads and few writes, we will make full use of cache to increase concurrency flow
+* 1. 将请求尽量拦截在系统上游：传统秒杀系统之所以挂，请求都压倒了后端数据层，数据读写锁冲突严重，几乎所有请求都超时，流量虽大，下单成功的有效流量甚小，我们可以通过限流、降级等措施来最大化减少对数据库的访问，从而保护系统。
+* 2. 充分利用缓存：秒杀商品是一个典型的读多写少的应用场景，充分利用缓存将大大提高并发量
+* 1. Hold the request at upstream system: if we let our requests flow into backend databse, it will cause a serious read-write conflict, and most request will time-out. However, users who successfully get the promotion deals only take up very little portion of the entire users, instead of letting them all making request to backend database, we can put all this work to front end and letting those few users access backend to protect our system from overflow.
+* 2. Make full use of cache: Online promotion sale make up of mainly reads and few writes, we will make full use of cache to increase concurrency flow
 
 ## 实现技术点 Techniques and Tips
 ### 1. 两次MD5加密 Twice MD5 Encryption
@@ -77,19 +77,27 @@ Implementation:
 
 ### 8. 解决超卖
 描述：比如某商品的库存为1，此时用户1和用户2并发购买该商品，用户1提交订单后该商品的库存被修改为0，而此时用户2并不知道的情况下提交订单，该商品的库存再次被修改为-1，这就是超卖现象
+Solve overselling
+Description: For example, if a product's inventory is 1, and at the same time user 1 and user 2 concurrently purchase the product, after user 1 submits the order, the product's inventory is modified to 0, and at this time, user 2 submits the order without knowing, and the product's inventory is modified to -1 again, this is the phenomenon of overselling.
 
 实现：
 
 1. 对库存更新时，先对库存判断，只有当库存大于0才能更新库存
 2. 对用户id和商品id建立一个唯一索引，通过这种约束避免同一用户发同时两个请求秒杀到两件相同商品
 3. 实现乐观锁，给商品信息表增加一个version字段，为每一条数据加上版本。每次更新的时候version+1，并且更新时候带上版本号，当提交前版本号等于更新前版本号，说明此时没有被其他线程影响到，正常更新，如果冲突了则不会进行提交更新。当库存是足够的情况下发生乐观锁冲突就进行一定次数的重试。
+1. When updating inventory, first check the inventory, only when the inventory is greater than 0 can the inventory be updated.
+2. Create a unique index for user id and product id to avoid a user sending two requests to rush to buy two identical products at the same time.
+3. Implement optimistic locking, add a version field to the product information table, and add a version to each data. Every time you update, the version+1, and update with the version number. If the version number before submission is equal to the version number before update, it means that it has not been affected by other threads at this time, and it is updated normally. If there is a conflict, it will not be submitted for update. When there is enough inventory, an optimistic lock conflict occurs and a certain number of retries are made.
 
-### 9. 使用数学公式验证码
+### 9. 使用数学公式验证码 Using math formula captcha
 描述：点击秒杀前，先让用户输入数学公式验证码，验证正确才能进行秒杀。
-
+Description: Before clicking on the rush buying, let the user input a math formula captcha first, and verify it correctly before proceeding with the rush buying.
 好处：
 1. 防止恶意的机器人和爬虫 
 2. 分散用户的请求
+Benefits:
+1. Prevent malicious robots and crawlers
+2. Disperse user requests
 
 实现：
 1. 前端通过把商品id作为参数调用服务端创建验证码接口
