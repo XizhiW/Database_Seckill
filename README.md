@@ -1,28 +1,31 @@
 
      
-## 系统介绍
+## 系统介绍 Project Description
 本系统是使用SpringBoot开发的高并发限时抢购秒杀系统，除了实现基本的登录、查看商品列表、秒杀、下单等功能，项目中还针对高并发情况实现了系统缓存、降级和限流。
+This project is a high concurrency flash sale system that is based on Springboot. It has functions for login, browsing, flash buy, create order. It also implement system cache, downgrade and current limitor for high currency situations.
 
-## 开发工具
+## 开发工具 Developing Tools
 IntelliJ IDEA + Navicat + Sublime Text3 + Git + Chrome
 
-## 压测工具
+## 压测工具 Testing Tool For High Concurrency
 JMeter
 
 
-## 开发技术
-前端技术 ：Bootstrap + jQuery + Thymeleaf
+## 开发技术 Developing Framework and Database
+前端技术 Frontend ：Bootstrap + jQuery + Thymeleaf
 
-后端技术 ：SpringBoot + MyBatis + MySQL
+后端技术 Backend ：SpringBoot + MyBatis + MySQL
 
-中间件技术 : Druid + Redis + RabbitMQ + Guava
+中间件技术 Middleware : Druid + Redis + RabbitMQ + Guava
 
-## 秒杀优化方向
+## 秒杀优化方向 Optimizations
 
 1. 将请求尽量拦截在系统上游：传统秒杀系统之所以挂，请求都压倒了后端数据层，数据读写锁冲突严重，几乎所有请求都超时，流量虽大，下单成功的有效流量甚小，我们可以通过限流、降级等措施来最大化减少对数据库的访问，从而保护系统。
-
+1. Hold the request at upstream system: if we let our requests flow into backend databse, it will cause a serious read-write conflict, and most request will time-out. However, users who successfully get the promotion deals only take up very little portion of the entire users, instead of letting them all making request to backend database, we can put all this work to front end and letting those few users access backend to protect our system from overflow.
 2. 充分利用缓存：秒杀商品是一个典型的读多写少的应用场景，充分利用缓存将大大提高并发量
-## 实现技术点
+2. Make full use of cache: Online promotion sale make up of mainly reads and few writes, we will make full use of cache to increase concurrency flow
+
+## 实现技术点 Techniques and Tips
 ### 1. 两次MD5加密
 
 将用户输入的密码和固定Salt通过MD5加密生成第一次加密后的密码，再讲该密码和随机生成的Salt通过MD5进行第二次加密，最后将第二次加密后的密码和第一次的固定Salt存数据库
