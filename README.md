@@ -2,7 +2,7 @@
      
 ## 系统介绍 Project Description
 本系统是使用SpringBoot开发的高并发限时抢购秒杀系统，除了实现基本的登录、查看商品列表、秒杀、下单等功能，项目中还针对高并发情况实现了系统缓存、降级和限流。
-This project is a high concurrency flash sale system that is based on Springboot. It has functions for login, browsing, flash buy, create order. It also implement system cache, downgrade and current limitor for high currency situations.
+This project is a high concurrency rush buy system that is based on Springboot. It has functions for login, browsing, rush buy, create order. It also implement system cache, downgrade and current limitor for high currency situations.
 
 ## 开发工具 Developing Tools
 IntelliJ IDEA + Navicat + Sublime Text3 + Git + Chrome
@@ -26,42 +26,54 @@ JMeter
 2. Make full use of cache: Online promotion sale make up of mainly reads and few writes, we will make full use of cache to increase concurrency flow
 
 ## 实现技术点 Techniques and Tips
-### 1. 两次MD5加密
+### 1. 两次MD5加密 Twice MD5 Encryption
 
-将用户输入的密码和固定Salt通过MD5加密生成第一次加密后的密码，再讲该密码和随机生成的Salt通过MD5进行第二次加密，最后将第二次加密后的密码和第一次的固定Salt存数据库
-
-好处：    
+* 将用户输入的密码和固定Salt通过MD5加密生成第一次加密后的密码，再讲该密码和随机生成的Salt通过MD5进行第二次加密，最后将第二次加密后的密码和第一次的固定Salt存数据库
+* First Encryption = MD5_Encryption(User Input Password + Static Salt)
+* Second Encryption = MD5_Encryption(First Encryption + Randomly Generated Salt)
+好处Benefits：    
      
-1. 第一次作用：防止用户明文密码在网络进行传输
-2. 第二次作用：防止数据库被盗，避免通过MD5反推出密码，双重保险
+* 1. 第一次作用：防止用户明文密码在网络进行传输
+* 2. 第二次作用：防止数据库被盗，避免通过MD5反推出密码，双重保险
+* 1. First Encryption: Hide Plaintext
+* 2. Second Encryption: In case database is accessed by hackers, they cannot dycrypt with MD5 hash tables.
 
-### 2. session共享
+### 2. session共享 Shared Session
 验证用户账号密码都正确情况下，通过UUID生成唯一id作为token，再将token作为key、用户信息作为value模拟session存储到redis，同时将token存储到cookie，保存登录状态
-
+When username and password is verified, generate unique id as a token, then use token as key, then store user information into redis, and store token into cookie.
 好处： 在分布式集群情况下，服务器间需要同步，定时同步各个服务器的session信息，会因为延迟到导致session不一致，使用redis把session数据集中存储起来，解决session不一致问题。
-
-### 3. JSR303自定义参数验证
+Benefits: In a distributed system, servers need to be synchronized. Save all session information with Redis to resolve lagging issues
+### 3. JSR303自定义参数验证 Use JSR303 Bean Validation
 使用JSR303自定义校验器，实现对用户账号、密码的验证，使得验证逻辑从业务代码中脱离出来。
-
-### 4. 全局异常统一处理
+Validate username and password, free validation from service code
+### 4. 全局异常统一处理 Deal with errors in a global setting
 通过拦截所有异常，对各种异常进行相应的处理，当遇到异常就逐层上抛，一直抛到最终由一个统一的、专门负责异常处理的地方处理，这有利于对异常的维护。
-
-### 5. 页面缓存 + 对象缓存
-1. 页面缓存：通过在手动渲染得到的html页面缓存到redis
-2. 对象缓存：包括对用户信息、商品信息、订单信息和token等数据进行缓存，利用缓存来减少对数据库的访问，大大加快查询速度。
-
-### 6. 页面静态化
+By intercepting all exceptions and handling them appropriately, when encountering an exception, throw it up layer by layer until it is finally handled by a unified, special place responsible for exception handling, which is beneficial for maintaining exceptions
+### 5. 页面缓存 + 对象缓存 Page cache + object cache
+* 1. 页面缓存：通过在手动渲染得到的html页面缓存到redis
+* 2. 对象缓存：包括对用户信息、商品信息、订单信息和token等数据进行缓存，利用缓存来减少对数据库的访问，大大加快查询速度。
+* 1. Page cache: Cache the html page obtained through manual rendering to redis
+* 2. Object cache: Including caching user information, product information, order information, and token data, using cache to reduce access to the database and greatly speed up query speed.
+### 6. 页面静态化 Page staticization
 对商品详情和订单详情进行页面静态化处理，页面是存在html，动态数据是通过接口从服务端获取，实现前后端分离，静态页面无需连接数据库打开速度较动态页面会有明显提高
+Process the product details and order details pages statically, the page is in html, and the dynamic data is obtained from the server through the interface, realizing the separation of front and back ends. The static page does not need to connect to the database and the opening speed is significantly faster than the dynamic page.
 
-### 7. 本地标记 + redis预处理 + RabbitMQ异步下单 + 客户端轮询
-描述：通过三级缓冲保护，1、本地标记  2、redis预处理  3、RabbitMQ异步下单，最后才会访问数据库，这样做是为了最大力度减少对数据库的访问。
-
+### 7. 本地标记 + redis预处理 + RabbitMQ异步下单 + 客户端轮询 Local marking + Redis preprocessing + RabbitMQ asynchronous ordering + client polling
+* 描述：通过三级缓冲保护，1、本地标记  2、redis预处理  3、RabbitMQ异步下单，最后才会访问数据库，这样做是为了最大力度减少对数据库的访问。
+* Description: Protect through three-level caching, 1, local marking 2, Redis preprocessing 3, RabbitMQ asynchronous ordering, and finally access the database, which is to minimize access to the database as much as possible.
 实现：
 
-1. 在秒杀阶段使用本地标记对用户秒杀过的商品做标记，若被标记过直接返回重复秒杀，未被标记才查询redis，通过本地标记来减少对redis的访问
-2. 抢购开始前，将商品和库存数据同步到redis中，所有的抢购操作都在redis中进行处理，通过Redis预减少库存减少数据库访问
-3. 为了保护系统不受高流量的冲击而导致系统崩溃的问题，使用RabbitMQ用异步队列处理下单，实际做了一层缓冲保护，做了一个窗口模型，窗口模型会实时的刷新用户秒杀的状态。
-4. client端用js轮询一个接口，用来获取处理状态
+* 1. 在秒杀阶段使用本地标记对用户秒杀过的商品做标记，若被标记过直接返回重复秒杀，未被标记才查询redis，通过本地标记来减少对redis的访问
+* 2. 抢购开始前，将商品和库存数据同步到redis中，所有的抢购操作都在redis中进行处理，通过Redis预减少库存减少数据库访问
+* 3. 为了保护系统不受高流量的冲击而导致系统崩溃的问题，使用RabbitMQ用异步队列处理下单，实际做了一层缓冲保护，做了一个窗口模型，窗口模型会实时的刷新用户秒杀的状态。
+* 4. client端用js轮询一个接口，用来获取处理状态
+
+Implementation:
+
+* 1. During the rush buying stage, use local marking to mark products that users have rushed to buy. If they have been marked, return directly to repeat the rush buying, if not marked, query redis, and use local marking to reduce access to redis.
+* 2. Before the rush buying starts, synchronize the product and inventory data to redis, and all rush buying operations are processed in redis. Reducing inventory through Redis reduces database access.
+* 3. In order to protect the system from crashing due to high traffic, use RabbitMQ to process orders asynchronously with a queue, which actually provides a buffer protection and a window model. The window model will refresh the user's rush buying status in real time.
+* 4. The client uses js to poll an interface to get the processing status.
 
 ### 8. 解决超卖
 描述：比如某商品的库存为1，此时用户1和用户2并发购买该商品，用户1提交订单后该商品的库存被修改为0，而此时用户2并不知道的情况下提交订单，该商品的库存再次被修改为-1，这就是超卖现象
