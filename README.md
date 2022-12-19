@@ -103,29 +103,23 @@ Benefits:
 1. 前端通过把商品id作为参数调用服务端创建验证码接口
 2. 服务端根据前端传过来的商品id和用户id生成验证码，并将商品id+用户id作为key，生成的验证码作为value存入redis，同时将生成的验证码输入图片写入imageIO让前端展示
 3. 将用户输入的验证码与根据商品id+用户id从redis查询到的验证码对比，相同就返回验证成功，进入秒杀；不同或从redis查询的验证码为空都返回验证失败，刷新验证码重试
-
-### 10. 使用RateLimiter实现限流
+Implementation:
+1. The front-end calls the server-side create captcha interface by passing the product id as a parameter.
+2. The server-side generates a captcha based on the product id and user id passed from the front-end, and stores the product id + user id as the key and the generated captcha as the value in redis. At the same time, it writes the generated captcha into an image through imageIO for the front-end to display.
+3. Compare the user's input captcha with the captcha queried from redis based on the product id + user id. If they are the same, return the verification success and enter the rush buying; if they are different or the captcha queried from redis is empty, return the verification failure and refresh the captcha to try again.
+### 10. 使用RateLimiter实现限流 Using RateLimiter to implement rate limiting
 描述：当我们去秒杀一些商品时，此时可能会因为访问量太大而导致系统崩溃，此时要使用限流来进行限制访问量，当达到限流阀值，后续请求会被降级；降级后的处理方案可以是：返回排队页面（高峰期访问太频繁，等一会重试）、错误页等。
+Description: When we rush to buy some products, the system may crash due to too much traffic. At this time, we need to use rate limiting to restrict the traffic volume. When the rate limiting threshold is reached, subsequent requests will be downgraded. The processing plan for the downgrade can be: returning to the queue page (too frequent access during peak hours, wait a moment and try again), error page, etc.
 
 实现：项目使用RateLimiter来实现限流，RateLimiter是guava提供的基于令牌桶算法的限流实现类，通过调整生成token的速率来限制用户频繁访问秒杀页面，从而达到防止超大流量冲垮系统。（令牌桶算法的原理是系统会以一个恒定的速度往桶里放入令牌，而如果请求需要被处理，则需要先从桶里获取一个令牌，当桶里没有令牌可取时，则拒绝服务）
 
+Implementation: The project uses RateLimiter to implement rate limiting. RateLimiter is a rate limiting implementation class provided by guava based on the token bucket algorithm. By adjusting the rate of generating tokens, it limits the user's frequent access to the rush buying page, thereby preventing the system from crashing due to excessive traffic. (The principle of the token bucket algorithm is that the system puts tokens into the bucket at a constant rate. If a request needs to be processed, it needs to get a token from the bucket first. If there are no tokens available in the bucket, the service is refused.
 
 
-## 压测效果
-优化前 ：开启1000个线程循环10次同时访问，QPS = 423 
-![优化前](https://github.com/zaiyunduan123/jesper_seckill/blob/master/src/main/resources/static/img/stress-test/goodsList_test_3.png)
-优化后：QPS = 2501
-![优化后](https://github.com/zaiyunduan123/jesper_seckill/blob/master/src/main/resources/static/img/stress-test/optimised_goodslist.png)
-
-
-## 关于项目运行的步骤
-1. 把sql目录下的seckill.sql脚本在你MySQL跑一遍，生成数据库表和数据
-2. 启动项目需要用到的组件Redis和RabbitMQ
-3. 直接运行启动类MainApplication.java
-4. 访问localhost:8080/login/to_login
-5. 登录的用户名是18181818181，密码是123456
-
+## 压测效果 Testing for High Concurrency
+Presentation video: start at 6:55 [link](https://www.youtube.com/watch?v=mI_jZkse2JI)
 
 -----
 
-本项目是学习了imooc网视频之后的个人理解和知识汇总，学习链接：https://coding.imooc.com/class/168.html
+本项目是学习了imooc网视频之后的个人理解和知识汇总，[学习链接](https://coding.imooc.com/class/168.html)
+This project is my personal understanding and summary of knowledge after learning from imooc's video[link](https://coding.imooc.com/class/168.html)
